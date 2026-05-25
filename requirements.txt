@@ -1,33 +1,39 @@
-# --- Core ML ---
-# NOT: torch + torchvision'ı pin'lemiyoruz; Colab/Kaggle preinstalled sürümünü
-# olduğu gibi kullanın (uyumlu pair olarak gelir). Pin'lersek pip yarı upgrade
-# yapıp "operator torchvision::nms does not exist" hatasını tetikleyebilir.
-transformers>=4.45,<4.50
-peft>=0.13,<0.15
-trl>=0.11,<0.14
-accelerate>=0.34
-datasets>=3.0
-bitsandbytes>=0.43; sys_platform != "win32"
+# LLM Final Project — bağımlılık listesi
+#
+# NOT: Colab/Kaggle notebook'ları bu dosyayı KULLANMAZ; kendi hücrelerinde
+# torch/torchvision'a dokunmadan HW2-style kurulum yapar. Bu liste lokal
+# geliştirme veya alternatif ortamlar için referanstır.
+
+# --- Core ML (torch ve torchvision'ı bilinçli pin'lemiyoruz) ---
+transformers
+peft
+trl
+accelerate
+bitsandbytes
+datasets
 sentencepiece
-protobuf
 
 # --- RAG ---
-langchain>=0.3,<0.4
-langchain-community>=0.3
-langchain-huggingface>=0.1
-langchain-text-splitters>=0.3
-sentence-transformers>=3.0
-faiss-cpu>=1.8
+langchain
+langchain-community
+langchain-huggingface
+langchain-text-splitters
+sentence-transformers
+faiss-cpu>=1.8.0
 
 # --- Document processing ---
-pypdf>=4.0
-pdfplumber>=0.11
+pypdf
+pdfplumber
 tiktoken
 
-# --- Evaluation ---
-unbabel-comet>=2.2
+# --- Evaluation: COMET ailesini --no-deps ile kurmak gerekiyor; o yüzden
+#     Colab notebook'ta ayrı bir komutta yapıyoruz. Lokal kurulumda da
+#     "pip install --no-deps unbabel-comet" + "lightning torchmetrics" akışını izle.
+unbabel-comet
+lightning>=2.0
+torchmetrics
 
-# --- Task 3 agent design (yalnızca tasarım; çalışma zamanı şart değil) ---
+# --- Task 3 agent design (yalnız tasarım; runtime kullanmıyoruz) ---
 langdetect
 wikipedia-api
 
