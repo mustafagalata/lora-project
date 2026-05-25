@@ -81,6 +81,18 @@ def main() -> None:
     write_jsonl(out, args.out_file)
     log.info("Yazıldı: %s (%d satır)", args.out_file, len(out))
 
+    # --- Örnek çeviri önizlemesi ---
+    print("\n" + "=" * 64)
+    print(f"ÖRNEK ÇEVİRİLER (ilk 3 / toplam {len(out)})")
+    print("=" * 64)
+    for i, ex in enumerate(out[:3], 1):
+        print(f"[{i}] {ex['src_lang']} -> {ex['tgt_lang']}")
+        print(f"  SRC: {ex['src'][:140]}")
+        print(f"  REF: {ex['tgt'][:140]}")
+        print(f"  HYP: {ex['hypothesis'][:140]}")
+        print()
+    print("=" * 64)
+
 
 if __name__ == "__main__":
     main()

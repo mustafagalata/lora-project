@@ -72,6 +72,32 @@ def main() -> None:
 
     write_json(scores, args.out)
     log.info("Yazıldı: %s", args.out)
+
+    # --- HW2 ile karşılaştırma tablosu ---
+    hw2 = scores.get("_baseline_hw2", {})
+
+    def _fmt(v):
+        return f"{v:.4f}" if isinstance(v, (int, float)) else "  —   "
+
+    print("\n" + "=" * 78)
+    print("COMET KARŞILAŞTIRMA (LoRA fine-tuned vs HW2 baseline)")
+    print("=" * 78)
+    print(f"{'Yön':<8}{'Zero-shot':>12}{'MAPS':>12}{'RAG':>12}{'LoRA (YENİ)':>14}{'Δ vs MAPS':>14}")
+    print("-" * 78)
+    for d in ("en2tr", "tr2en"):
+        zs = hw2.get(f"zero_shot_{d}")
+        maps_v = hw2.get(f"maps_{d}")
+        rag = hw2.get(f"rag_{d}")
+        lora = scores.get(d)
+        delta = (
+            f"{lora - maps_v:+.4f}"
+            if isinstance(lora, (int, float)) and isinstance(maps_v, (int, float))
+            else "   —   "
+        )
+        print(f"{d:<8}{_fmt(zs):>12}{_fmt(maps_v):>12}{_fmt(rag):>12}{_fmt(lora):>14}{delta:>14}")
+    print("=" * 78)
+
+    print("\nRaw JSON:")
     print(json.dumps(scores, indent=2, ensure_ascii=False))
 
 

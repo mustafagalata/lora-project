@@ -113,12 +113,45 @@ def main() -> None:
     )
 
     log.info("Eğitim başlıyor (resume=%s)...", args.resume)
+    import time
+    t0 = time.time()
     trainer.train(resume_from_checkpoint=args.resume or None)
+    elapsed_min = (time.time() - t0) / 60
 
     final_path = args.output_dir / "adapter_final"
     trainer.model.save_pretrained(str(final_path))
     tokenizer.save_pretrained(str(final_path))
     log.info("Final adapter kaydedildi: %s", final_path)
+
+    # --- Training özeti ---
+    state = trainer.state
+    final_train_loss = next(
+        (e["loss"] for e in reversed(state.log_history)
+         if "loss" in e and "eval_loss" not in e),
+        None,
+    )
+    final_eval_loss = next(
+        (e["eval_loss"] for e in reversed(state.log_history) if "eval_loss" in e),
+        None,
+    )
+    adapter_size_mb = sum(
+        f.stat().st_size for f in final_path.rglob("*") if f.is_file()
+    ) / 1e6
+    ckpts = sorted(args.output_dir.glob("checkpoint-*"))
+
+    print("\n" + "=" * 64)
+    print("TRAINING ÖZET")
+    print("=" * 64)
+    print(f"  Toplam adım:        {state.global_step}")
+    print(f"  Epoch:              {state.epoch:.2f}")
+    print(f"  Wall-clock:         {elapsed_min:.1f} dakika")
+    print(f"  Son train loss:     {final_train_loss}")
+    print(f"  Son eval loss:      {final_eval_loss}")
+    print(f"  Final adapter:      {final_path}")
+    print(f"  Adapter boyutu:     {adapter_size_mb:.1f} MB")
+    print(f"  Tutulan checkpoint: {len(ckpts)}"
+          f"  ({', '.join(c.name for c in ckpts) if ckpts else '—'})")
+    print("=" * 64)
 
 
 if __name__ == "__main__":
