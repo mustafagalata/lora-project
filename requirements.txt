@@ -1,5 +1,7 @@
 # --- Core ML ---
-torch>=2.3,<2.6
+# NOT: torch + torchvision'ı pin'lemiyoruz; Colab/Kaggle preinstalled sürümünü
+# olduğu gibi kullanın (uyumlu pair olarak gelir). Pin'lersek pip yarı upgrade
+# yapıp "operator torchvision::nms does not exist" hatasını tetikleyebilir.
 transformers>=4.45,<4.50
 peft>=0.13,<0.15
 trl>=0.11,<0.14
