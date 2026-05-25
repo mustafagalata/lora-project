@@ -24,8 +24,9 @@ from langchain_huggingface import HuggingFaceEmbeddings  # noqa: E402
 from langchain_text_splitters import RecursiveCharacterTextSplitter  # noqa: E402
 
 from src.common.config import (  # noqa: E402
-    CHUNK_OVERLAP, CHUNK_SIZE, DATA_DIR, EMBEDDING_MODEL_NAME,
-    FAISS_INDEX_DIR, FAISS_INDEX_NAME,
+    CHUNK_OVERLAP, CHUNK_SIZE, DATA_DIR, EMBEDDING_BATCH_SIZE,
+    EMBEDDING_MODEL_NAME, FAISS_INDEX_DIR, FAISS_INDEX_NAME,
+    FILTER_ENABLED, MAX_NONALNUM_RATIO, MIN_CHUNK_CHARS,
 )
 from src.common.prompts import e5_passage  # noqa: E402
 from src.common.utils import setup_logging  # noqa: E402
@@ -112,8 +113,7 @@ def trim_boilerplate(text: str) -> tuple[str, dict]:
 # --- Chunk-level gürültü filtresi -------------------------------------------
 
 _RE_DOT_LEADER = re.compile(r"\.{3,}\s*\d+")   # "..... 12" gibi içindekiler izi
-MIN_CHUNK_CHARS = 150
-MAX_NONALNUM_RATIO = 0.40
+# MIN_CHUNK_CHARS ve MAX_NONALNUM_RATIO config.yaml'dan gelir
 
 
 def is_noise_chunk(text: str) -> bool:
@@ -138,9 +138,9 @@ def main() -> None:
     ap.add_argument("--index_name", default=FAISS_INDEX_NAME)
     ap.add_argument("--chunk_size", type=int, default=CHUNK_SIZE)
     ap.add_argument("--chunk_overlap", type=int, default=CHUNK_OVERLAP)
-    ap.add_argument("--embedding_batch", type=int, default=64)
-    ap.add_argument("--no_filter", action="store_true",
-                    help="Bölüm trim ve chunk filtresini kapat (ham pipeline)")
+    ap.add_argument("--embedding_batch", type=int, default=EMBEDDING_BATCH_SIZE)
+    ap.add_argument("--no_filter", action="store_true", default=(not FILTER_ENABLED),
+                    help="Bölüm trim ve chunk filtresini kapat (default: config'ten gelir)")
     args = ap.parse_args()
 
     setup_logging()

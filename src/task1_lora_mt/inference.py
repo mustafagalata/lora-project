@@ -15,7 +15,10 @@ ensure_repo_on_syspath()
 import torch  # noqa: E402
 from tqdm import tqdm  # noqa: E402
 
-from src.common.config import CHECKPOINT_DIR, DATA_DIR, GEN_MAX_NEW_TOKENS, RESULTS_DIR  # noqa: E402
+from src.common.config import (  # noqa: E402
+    CHECKPOINT_DIR, DATA_DIR, GEN_MAX_NEW_TOKENS, INFERENCE_BATCH_SIZE,
+    RESULTS_DIR, TEST_LIMIT_PER_DIRECTION,
+)
 from src.common.model_loader import load_base_model, load_tokenizer, load_with_adapter  # noqa: E402
 from src.common.prompts import mt_messages  # noqa: E402
 from src.common.utils import batched, read_jsonl, setup_logging, write_jsonl  # noqa: E402
@@ -29,10 +32,11 @@ def main() -> None:
                     default=CHECKPOINT_DIR / "qwen25_7b_lora_mt" / "adapter_final")
     ap.add_argument("--test_file", type=Path, default=DATA_DIR / "wmt16_en_tr" / "test.jsonl")
     ap.add_argument("--out_file", type=Path, default=RESULTS_DIR / "task1_predictions.jsonl")
-    ap.add_argument("--batch_size", type=int, default=4)
+    ap.add_argument("--batch_size", type=int, default=INFERENCE_BATCH_SIZE)
     ap.add_argument("--max_new_tokens", type=int, default=GEN_MAX_NEW_TOKENS)
     ap.add_argument("--no_adapter", action="store_true", help="Base model only")
-    ap.add_argument("--limit", type=int, default=-1, help="Test set kapağı (-1 = full)")
+    ap.add_argument("--limit_per_direction", type=int, default=TEST_LIMIT_PER_DIRECTION,
+                    help="Her yön için max örnek (-1 = sınırsız). Config'ten varsayılır.")
     args = ap.parse_args()
 
     setup_logging()
@@ -48,8 +52,13 @@ def main() -> None:
         model = load_with_adapter(str(args.adapter))
 
     test = list(read_jsonl(args.test_file))
-    if args.limit > 0:
-        test = test[:args.limit]
+    if args.limit_per_direction > 0:
+        # Yön bazlı slice: HW2 ile adil karşılaştırma için her yön ayrı cap'lenir
+        en2tr = [e for e in test if e["src_lang"] == "English"][:args.limit_per_direction]
+        tr2en = [e for e in test if e["src_lang"] == "Turkish"][:args.limit_per_direction]
+        test = en2tr + tr2en
+        log.info("Yön bazlı cap=%d → en2tr=%d, tr2en=%d, toplam=%d",
+                 args.limit_per_direction, len(en2tr), len(tr2en), len(test))
     log.info("Test örnek sayısı: %d", len(test))
 
     out: list[dict] = []

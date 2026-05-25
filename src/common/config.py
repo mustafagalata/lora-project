@@ -1,76 +1,101 @@
 """Merkezi konfigürasyon.
 
-Lokalde repo köküne, Colab'da `DRIVE_ROOT` env var ile Drive'a yönlenir.
-Tüm sabitler (path, model adı, hyperparameter) tek noktada tutulur ki
-script'ler argparse default'larını burdan beslesin.
+Tüm tunable parametreler repo kökündeki ``config.yaml`` içinde tutulur. Bu
+modül YAML'ı bir kez okur ve eski Python sabit isimlerine (BASE_MODEL_NAME,
+LORA_R, vb.) map'ler — böylece script'ler ``from src.common.config import X``
+ile import etmeye devam edebilir.
+
+Path'ler için Drive override destekli:
+- ``DRIVE_ROOT`` env var set ise data/models/results path'leri oradan türer.
+- ``CONFIG_PATH`` env var ile alternatif bir YAML dosyası yüklenebilir.
 """
 from __future__ import annotations
 import os
 from pathlib import Path
 
-# --- Repo kökü (kod konumu) -------------------------------------------------
+import yaml
+
+
+# --- Repo kökü -------------------------------------------------------------
 ROOT = Path(__file__).resolve().parents[2]
 
-# Veri / model / sonuç klasörleri için Drive override (Colab senaryosu)
+# --- YAML yükle ------------------------------------------------------------
+CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", ROOT / "config.yaml"))
+with open(CONFIG_PATH, "r", encoding="utf-8") as _f:
+    _cfg = yaml.safe_load(_f)
+
+
+# --- Path'ler (Drive override destekli) ------------------------------------
 _drive = os.environ.get("DRIVE_ROOT")
 
 
 def _resolve(name: str, default: Path) -> Path:
-    """DRIVE_ROOT set ise oradaki `name/`, değilse repo içindeki `default`."""
-    if _drive:
-        return Path(_drive) / name
-    return default
+    return Path(_drive) / name if _drive else default
 
 
-DATA_DIR = Path(os.environ.get("DATA_DIR", _resolve("data", ROOT / "data")))
-MODELS_DIR = Path(os.environ.get("MODELS_DIR", _resolve("models", ROOT / "models")))
-RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", _resolve("results", ROOT / "results")))
-CHECKPOINT_DIR = Path(os.environ.get("CHECKPOINT_DIR", MODELS_DIR / "checkpoints"))
+DATA_DIR        = Path(os.environ.get("DATA_DIR",        _resolve("data",    ROOT / "data")))
+MODELS_DIR      = Path(os.environ.get("MODELS_DIR",      _resolve("models",  ROOT / "models")))
+RESULTS_DIR     = Path(os.environ.get("RESULTS_DIR",     _resolve("results", ROOT / "results")))
+CHECKPOINT_DIR  = Path(os.environ.get("CHECKPOINT_DIR",  MODELS_DIR / "checkpoints"))
 FAISS_INDEX_DIR = Path(os.environ.get("FAISS_INDEX_DIR", DATA_DIR / "faiss_index"))
 
-# --- Model adları -----------------------------------------------------------
-BASE_MODEL_NAME = os.environ.get("BASE_MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
-EMBEDDING_MODEL_NAME = os.environ.get("EMBEDDING_MODEL_NAME", "intfloat/multilingual-e5-base")
-COMET_MODEL_NAME = os.environ.get("COMET_MODEL_NAME", "Unbabel/wmt22-comet-da")
 
-# --- Task 1 (MT / LoRA) -----------------------------------------------------
-WMT16_CONFIG = "tr-en"
-WMT16_TRAIN_SAMPLES = 50_000           # train subsample (None = full)
-MAX_SEQ_LENGTH = 512
+# --- Modeller --------------------------------------------------------------
+BASE_MODEL_NAME      = _cfg["models"]["base"]
+EMBEDDING_MODEL_NAME = _cfg["models"]["embedding"]
+COMET_MODEL_NAME     = _cfg["models"]["comet"]
 
-LORA_R = 16
-LORA_ALPHA = 32
-LORA_DROPOUT = 0.05
-LORA_TARGET_MODULES = [
-    "q_proj", "k_proj", "v_proj", "o_proj",
-    "gate_proj", "up_proj", "down_proj",
-]
 
-PER_DEVICE_TRAIN_BATCH_SIZE = 4        # A100 default; T4 için 1 + grad_accum 16
-GRADIENT_ACCUMULATION_STEPS = 4        # effective batch = 16
-LEARNING_RATE = 2e-4
-NUM_TRAIN_EPOCHS = 1
-WARMUP_RATIO = 0.03
-SAVE_STEPS = 200
-SAVE_TOTAL_LIMIT = 2
-LOGGING_STEPS = 25
+# --- Task 1 — MT / LoRA ----------------------------------------------------
+_t1 = _cfg["task1"]
+WMT16_CONFIG             = _t1["wmt16_config"]
+WMT16_TRAIN_SAMPLES      = _t1["train_samples"]
+TEST_LIMIT_PER_DIRECTION = _t1["test_limit_per_direction"]
+MAX_SEQ_LENGTH           = _t1["max_seq_length"]
 
-# --- Task 2 (RAG) -----------------------------------------------------------
-CHUNK_SIZE = 800
-CHUNK_OVERLAP = 120
-TOP_K = 5
-FAISS_INDEX_NAME = "turkish_history"
+LORA_R              = _t1["lora"]["r"]
+LORA_ALPHA          = _t1["lora"]["alpha"]
+LORA_DROPOUT        = _t1["lora"]["dropout"]
+LORA_TARGET_MODULES = list(_t1["lora"]["target_modules"])
 
-# --- Generation (her iki task) ----------------------------------------------
-GEN_MAX_NEW_TOKENS = 256
-GEN_TEMPERATURE = 0.0
-GEN_DO_SAMPLE = False
+PER_DEVICE_TRAIN_BATCH_SIZE = _t1["training"]["per_device_batch_size"]
+GRADIENT_ACCUMULATION_STEPS = _t1["training"]["grad_accum_steps"]
+LEARNING_RATE               = float(_t1["training"]["learning_rate"])
+NUM_TRAIN_EPOCHS            = _t1["training"]["num_epochs"]
+WARMUP_RATIO                = _t1["training"]["warmup_ratio"]
+LOGGING_STEPS               = _t1["training"]["logging_steps"]
+SAVE_STEPS                  = _t1["training"]["save_steps"]
+SAVE_TOTAL_LIMIT            = _t1["training"]["save_total_limit"]
 
-# --- Reproducibility --------------------------------------------------------
-SEED = 42
+INFERENCE_BATCH_SIZE = _t1["inference"]["batch_size"]
+COMET_BATCH_SIZE     = _t1["comet"]["batch_size"]
+
+
+# --- Task 2 — RAG ----------------------------------------------------------
+_t2 = _cfg["task2"]
+CHUNK_SIZE            = _t2["chunk_size"]
+CHUNK_OVERLAP         = _t2["chunk_overlap"]
+TOP_K                 = _t2["top_k"]
+FAISS_INDEX_NAME      = _t2["faiss_index_name"]
+EMBEDDING_BATCH_SIZE  = _t2["embedding_batch_size"]
+
+FILTER_ENABLED     = _t2["filter"]["enabled"]
+MIN_CHUNK_CHARS    = _t2["filter"]["min_chunk_chars"]
+MAX_NONALNUM_RATIO = _t2["filter"]["max_nonalnum_ratio"]
+
+
+# --- Generation ------------------------------------------------------------
+_gen = _cfg["generation"]
+GEN_MAX_NEW_TOKENS = _gen["max_new_tokens"]
+GEN_DO_SAMPLE      = _gen["do_sample"]
+GEN_NUM_BEAMS      = _gen.get("num_beams", 1)
+
+
+# --- Misc ------------------------------------------------------------------
+SEED = _cfg.get("seed", 42)
 
 
 def ensure_dirs() -> None:
-    """Output klasörlerini idempotent şekilde oluşturur."""
+    """Output klasörlerini idempotent oluştur."""
     for d in (DATA_DIR, MODELS_DIR, RESULTS_DIR, CHECKPOINT_DIR, FAISS_INDEX_DIR):
         d.mkdir(parents=True, exist_ok=True)

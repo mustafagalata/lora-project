@@ -1,0 +1,73 @@
+# LLM Final Project — runtime configuration
+#
+# Tek değişiklik noktası: tüm script'ler ve notebook hücreleri default değerleri
+# buradan okur. Hücreleri argümansız çalıştırabilmek için tasarlandı.
+# CLI flag'leri (örn. --batch_size) istisnaî override için hâlâ destekli.
+
+seed: 42
+
+models:
+  base: "Qwen/Qwen2.5-7B-Instruct"
+  embedding: "intfloat/multilingual-e5-base"
+  comet: "Unbabel/wmt22-comet-da"
+
+# ---------------------------------------------------------------------------
+# Task 1 — LoRA fine-tuning for WMT16 EN<->TR
+# ---------------------------------------------------------------------------
+task1:
+  wmt16_config: "tr-en"
+  train_samples: 50000               # bidirectional expand sonrası cap
+  test_limit_per_direction: 500      # HW2 paritesi: toplam 1000 (500 en2tr + 500 tr2en)
+  max_seq_length: 512
+
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules:
+      - q_proj
+      - k_proj
+      - v_proj
+      - o_proj
+      - gate_proj
+      - up_proj
+      - down_proj
+
+  training:
+    per_device_batch_size: 4         # A100 default; L4: 2; T4: 1
+    grad_accum_steps: 4              # effective batch = 16
+    learning_rate: 2.0e-4
+    num_epochs: 1
+    warmup_ratio: 0.03
+    logging_steps: 25
+    save_steps: 200
+    save_total_limit: 2
+
+  inference:
+    batch_size: 8
+
+  comet:
+    batch_size: 8
+
+# ---------------------------------------------------------------------------
+# Task 2 — RAG over TurkishMMLU History
+# ---------------------------------------------------------------------------
+task2:
+  chunk_size: 800
+  chunk_overlap: 120
+  top_k: 5
+  faiss_index_name: "turkish_history"
+  embedding_batch_size: 64
+
+  filter:
+    enabled: true                    # boilerplate trim + noise chunk filter
+    min_chunk_chars: 150
+    max_nonalnum_ratio: 0.40
+
+# ---------------------------------------------------------------------------
+# Generation defaults (Task 1 inference + Task 2 QA)
+# ---------------------------------------------------------------------------
+generation:
+  max_new_tokens: 256
+  do_sample: false
+  num_beams: 1

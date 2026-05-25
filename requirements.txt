@@ -30,6 +30,7 @@ langdetect
 wikipedia-api
 
 # --- Utilities ---
+pyyaml>=6.0
 pandas
 numpy
 tqdm
