@@ -108,13 +108,17 @@ def main() -> None:
     except TypeError:
         cfg = SFTConfig(max_seq_length=args.max_seq_length, **sft_kwargs)
 
-    trainer = SFTTrainer(
+    trainer_kwargs = dict(
         model=model,
         train_dataset=train_ds,
         eval_dataset=val_ds,
         args=cfg,
-        tokenizer=tokenizer,
     )
+    # trl 0.13+ renamed `tokenizer` -> `processing_class`; try new name first.
+    try:
+        trainer = SFTTrainer(processing_class=tokenizer, **trainer_kwargs)
+    except TypeError:
+        trainer = SFTTrainer(tokenizer=tokenizer, **trainer_kwargs)
 
     log.info("Eğitim başlıyor (resume=%s)...", args.resume)
     import time
