@@ -1,0 +1,64 @@
+Çok Dilli Tarih QA Agent — Mimari Diyagram
+==========================================
+
+                       ┌─────────────────────────┐
+                       │    Kullanıcı sorusu     │
+                       └─────────────┬───────────┘
+                                     │
+                                     ▼
+                       ┌─────────────────────────┐
+                       │   1) Dil tespiti        │
+                       │   langdetect → TR | EN  │
+                       │   (low-conf → LLM)      │
+                       └─────────────┬───────────┘
+                                     │
+                  ┌──────────────────┴──────────────────┐
+                  │                                     │
+                EN│                                   TR│
+                  ▼                                     ▼
+       ┌──────────────────┐                  ┌────────────────────┐
+       │  wikipedia_      │                  │  turkish_rag_      │
+       │  search(query)   │                  │  search(query)     │
+       │  → Wikipedia API │                  │  → FAISS + e5      │
+       │  (top 1-2 art.)  │                  │  (top_k = 5 chunk) │
+       └────────┬─────────┘                  └─────────┬──────────┘
+                │                                      │
+                │           ┌──────────────────────┐   │
+                └──────────►│  2) ReAct loop       │◄──┘
+                            │  Thought / Action /  │
+                            │  Observation         │
+                            │  (max 3 rounds)      │
+                            └──────────┬───────────┘
+                                       │
+                                       ▼
+                       ┌───────────────────────────┐
+                       │  3) Cevap üretimi         │
+                       │  Qwen2.5-7B-Instruct      │
+                       │  (4-bit QLoRA load)       │
+                       │  RAG / Wikipedia prompt   │
+                       │  temperature = 0.0-0.3    │
+                       └─────────────┬─────────────┘
+                                     │
+                                     ▼
+                       ┌───────────────────────────┐
+                       │  4) Reflection (ops.)     │
+                       │  OK → return              │
+                       │  REVISE → 1 ek retrieve   │
+                       │           + regenerate    │
+                       └─────────────┬─────────────┘
+                                     │
+                                     ▼
+                           ┌─────────────────┐
+                           │  Final cevap    │
+                           │  (soru diliyle) │
+                           └─────────────────┘
+
+Veri akışı: question (str)
+         → lang (TR|EN)
+         → retrieved_context (str: "[1] ... [2] ...")
+         → final_answer (str)
+
+Bileşen sözleşmeleri (tool I/O):
+  turkish_rag_search:  query (str) -> top_k chunks joined (str)
+  wikipedia_search:    query (str) -> intro snippet(s) (str)
+  reflect:             (question, sources, answer) -> "OK" | "REVISE: <reason>"

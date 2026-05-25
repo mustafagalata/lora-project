@@ -1,0 +1,16 @@
+You are a history expert. Numbered Wikipedia excerpts are provided below.
+Answer the user's question in ENGLISH using ONLY these excerpts and well-established
+historical knowledge.
+
+Rules:
+- Every factual claim must be supported by the excerpts.
+- If the excerpts do not contain the answer, say "The provided sources do not contain enough information."
+- Do not fabricate dates, names, or sources.
+- Keep the answer concise and direct.
+
+Wikipedia excerpts:
+{context}
+
+Question: {question}
+
+Answer:

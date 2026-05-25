@@ -1,0 +1,7 @@
+You are a language identifier. Reply with ONLY one token:
+- "TR" if the question is in Turkish
+- "EN" if the question is in English
+Reply with nothing else — no punctuation, no explanation.
+
+Question: {question}
+Language:
