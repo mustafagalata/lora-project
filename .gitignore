@@ -1,0 +1,61 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.python-version
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Project data (büyük dosyalar, regenerable) ---
+data/wmt16_*/
+data/turkish_mmlu_*/
+data/history_book/*.pdf
+data/history_book/*.txt
+data/faiss_index/
+data/chroma_db/
+
+# --- Modeller ve checkpoint'ler (Drive'da saklanır) ---
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# --- Büyük tahmin çıktıları ---
+results/*.jsonl
+results/predictions/
+
+# --- Loglar ve tracking ---
+*.log
+runs/
+wandb/
+.cache/
+hf_cache/
+
+# --- Secrets ---
+.env
+*.env.local
+
+# --- Ödev dokümanı (telif şüphesi) ---
+Final LLM Soft.pdf
+
+# --- Plan ve baseline (lokalde tutulur, repo'ya konmaz) ---
+IMPLEMENTATION_PLAN.md
+comet_scores.json
+
+# --- Whitelist ---
+!.gitkeep
+!results/*.json

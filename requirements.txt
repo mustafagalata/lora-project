@@ -1,0 +1,37 @@
+# --- Core ML ---
+torch>=2.3,<2.6
+transformers>=4.45,<4.50
+peft>=0.13,<0.15
+trl>=0.11,<0.14
+accelerate>=0.34
+datasets>=3.0
+bitsandbytes>=0.43; sys_platform != "win32"
+sentencepiece
+protobuf
+
+# --- RAG ---
+langchain>=0.3,<0.4
+langchain-community>=0.3
+langchain-huggingface>=0.1
+langchain-text-splitters>=0.3
+sentence-transformers>=3.0
+faiss-cpu>=1.8
+
+# --- Document processing ---
+pypdf>=4.0
+pdfplumber>=0.11
+tiktoken
+
+# --- Evaluation ---
+unbabel-comet>=2.2
+
+# --- Task 3 agent design (yalnızca tasarım; çalışma zamanı şart değil) ---
+langdetect
+wikipedia-api
+
+# --- Utilities ---
+pandas
+numpy
+tqdm
+matplotlib
+python-dotenv
