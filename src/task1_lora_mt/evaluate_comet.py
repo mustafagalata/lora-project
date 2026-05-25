@@ -12,6 +12,49 @@ from src.common.utils import ensure_repo_on_syspath  # noqa: E402
 
 ensure_repo_on_syspath()
 
+
+def _patch_comet_xlmr() -> None:
+    """COMET xlmr.py'yi yeni transformers API ile uyumlu hale getir.
+
+    transformers son sürümünde `return_dict=False` 3-tuple yerine 2-tuple
+    döndürüyor; COMET 2.x'in xlmr encoder'ı 3-tuple unpack ediyor ve patlıyor:
+    `ValueError: not enough values to unpack (expected 3, got 2)`.
+
+    Yama idempotent: zaten yamalıysa veya format değiştiyse no-op.
+    """
+    import importlib.util
+    spec = importlib.util.find_spec("comet.encoders.xlmr")
+    if spec is None or spec.origin is None:
+        return
+    path = spec.origin
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    old = (
+        "        last_hidden_states, _, all_layers = self.model(\n"
+        "            input_ids=input_ids,\n"
+        "            attention_mask=attention_mask,\n"
+        "            output_hidden_states=True,\n"
+        "            return_dict=False,\n"
+        "        )"
+    )
+    new = (
+        "        _out = self.model(\n"
+        "            input_ids=input_ids,\n"
+        "            attention_mask=attention_mask,\n"
+        "            output_hidden_states=True,\n"
+        "            return_dict=True,\n"
+        "        )\n"
+        "        last_hidden_states = _out.last_hidden_state\n"
+        "        all_layers = _out.hidden_states"
+    )
+    if old in content:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content.replace(old, new))
+
+
+# COMET'i import etmeden önce yamayı uygula
+_patch_comet_xlmr()
+
 from comet import download_model, load_from_checkpoint  # noqa: E402
 
 from src.common.config import COMET_MODEL_NAME, RESULTS_DIR, ROOT  # noqa: E402
