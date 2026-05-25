@@ -78,7 +78,7 @@ def main() -> None:
     val_ds = build_hf_dataset(args.data_dir / "validation.jsonl", tokenizer)
     log.info("Train=%d, Val=%d", len(train_ds), len(val_ds))
 
-    cfg = SFTConfig(
+    sft_kwargs = dict(
         output_dir=str(args.output_dir),
         per_device_train_batch_size=args.batch_size,
         gradient_accumulation_steps=args.grad_accum,
@@ -96,13 +96,17 @@ def main() -> None:
         bf16=True,
         optim="paged_adamw_8bit",
         max_grad_norm=1.0,
-        max_seq_length=args.max_seq_length,
         packing=False,
         gradient_checkpointing=True,
         report_to="none",
         dataset_text_field="text",
         seed=SEED,
     )
+    # trl 0.13+ renamed `max_seq_length` -> `max_length`; try new name first.
+    try:
+        cfg = SFTConfig(max_length=args.max_seq_length, **sft_kwargs)
+    except TypeError:
+        cfg = SFTConfig(max_seq_length=args.max_seq_length, **sft_kwargs)
 
     trainer = SFTTrainer(
         model=model,
