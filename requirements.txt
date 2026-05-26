@@ -22,6 +22,7 @@ sentence-transformers
 faiss-cpu>=1.8.0
 
 # --- Document processing ---
+pymupdf
 pypdf
 pdfplumber
 tiktoken

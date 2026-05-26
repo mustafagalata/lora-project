@@ -37,13 +37,29 @@ log = logging.getLogger(__name__)
 # --- PDF -> ham metin ------------------------------------------------------
 
 def extract_text_from_pdf(path: Path) -> str:
-    """pdfplumber sayfa-sayfa text (Türkçe karakterler için pypdf'ten daha güvenli)."""
-    import pdfplumber
-    parts: list[str] = []
-    with pdfplumber.open(path) as pdf:
-        for page in pdf.pages:
-            parts.append(page.extract_text() or "")
-    return "\n".join(parts)
+    """PyMuPDF (fitz) ile hızlı text extraction; yoksa pdfplumber fallback.
+
+    pdfplumber ders kitabı gibi görsel-ağır büyük PDF'lerde sayfa başına layout
+    analizi yaptığı için çok yavaştır (~dakikalar/kitap). PyMuPDF düz text
+    çıkarımında 10-50× hızlıdır ve Türkçe karakterleri düzgün korur.
+    """
+    try:
+        import fitz  # PyMuPDF
+        parts: list[str] = []
+        with fitz.open(path) as doc:
+            n = doc.page_count
+            for i, page in enumerate(doc):
+                parts.append(page.get_text())
+        log.info("  %s: %d sayfa (PyMuPDF)", path.name, n)
+        return "\n".join(parts)
+    except ImportError:
+        log.warning("PyMuPDF yok; pdfplumber'a düşülüyor (yavaş olabilir).")
+        import pdfplumber
+        parts = []
+        with pdfplumber.open(path) as pdf:
+            for page in pdf.pages:
+                parts.append(page.extract_text() or "")
+        return "\n".join(parts)
 
 
 # --- Düşük seviyeli metin temizliği ----------------------------------------
