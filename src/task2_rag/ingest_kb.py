@@ -36,30 +36,36 @@ log = logging.getLogger(__name__)
 
 # --- PDF -> ham metin ------------------------------------------------------
 
-def extract_text_from_pdf(path: Path) -> str:
-    """PyMuPDF (fitz) ile hızlı text extraction; yoksa pdfplumber fallback.
+def extract_text_from_pdf(path: Path, extractor: str = "pdfplumber") -> str:
+    """PDF'ten metin çıkar.
 
-    pdfplumber ders kitabı gibi görsel-ağır büyük PDF'lerde sayfa başına layout
-    analizi yaptığı için çok yavaştır (~dakikalar/kitap). PyMuPDF düz text
-    çıkarımında 10-50× hızlıdır ve Türkçe karakterleri düzgün korur.
+    extractor="pdfplumber" (DEFAULT): layout-aware, ders kitabı gibi kompleks
+      düzenlerde (kutu, kenar notu, çok sütun) daha temiz/doğru metin → daha
+      kaliteli retrieval. Yavaştır (~dakikalar/büyük kitap).
+    extractor="pymupdf": düz-text, 10-50× hızlı ama layout-agnostic; kompleks
+      sayfalarda metin sırası bozulabilir → retrieval kalitesi düşebilir.
     """
-    try:
-        import fitz  # PyMuPDF
-        parts: list[str] = []
-        with fitz.open(path) as doc:
-            n = doc.page_count
-            for i, page in enumerate(doc):
-                parts.append(page.get_text())
-        log.info("  %s: %d sayfa (PyMuPDF)", path.name, n)
-        return "\n".join(parts)
-    except ImportError:
-        log.warning("PyMuPDF yok; pdfplumber'a düşülüyor (yavaş olabilir).")
-        import pdfplumber
-        parts = []
-        with pdfplumber.open(path) as pdf:
-            for page in pdf.pages:
-                parts.append(page.extract_text() or "")
-        return "\n".join(parts)
+    if extractor == "pymupdf":
+        try:
+            import fitz  # PyMuPDF
+            parts: list[str] = []
+            with fitz.open(path) as doc:
+                n = doc.page_count
+                for page in doc:
+                    parts.append(page.get_text())
+            log.info("  %s: %d sayfa (PyMuPDF)", path.name, n)
+            return "\n".join(parts)
+        except ImportError:
+            log.warning("PyMuPDF yok; pdfplumber'a düşülüyor.")
+
+    import pdfplumber
+    parts = []
+    with pdfplumber.open(path) as pdf:
+        n = len(pdf.pages)
+        for page in pdf.pages:
+            parts.append(page.extract_text() or "")
+    log.info("  %s: %d sayfa (pdfplumber)", path.name, n)
+    return "\n".join(parts)
 
 
 # --- Düşük seviyeli metin temizliği ----------------------------------------
@@ -155,6 +161,8 @@ def main() -> None:
     ap.add_argument("--chunk_size", type=int, default=CHUNK_SIZE)
     ap.add_argument("--chunk_overlap", type=int, default=CHUNK_OVERLAP)
     ap.add_argument("--embedding_batch", type=int, default=EMBEDDING_BATCH_SIZE)
+    ap.add_argument("--extractor", choices=["pdfplumber", "pymupdf"], default="pdfplumber",
+                    help="PDF metin çıkarıcı (default: pdfplumber — kaliteli/layout-aware)")
     ap.add_argument("--no_filter", action="store_true", default=(not FILTER_ENABLED),
                     help="Bölüm trim ve chunk filtresini kapat (default: config'ten gelir)")
     args = ap.parse_args()
@@ -170,7 +178,7 @@ def main() -> None:
     docs: list[Document] = []
     for p in pdfs:
         log.info("Okunuyor: %s", p.name)
-        raw = extract_text_from_pdf(p)
+        raw = extract_text_from_pdf(p, extractor=args.extractor)
         text = clean(raw)
         if not args.no_filter:
             text, stats = trim_boilerplate(text)
